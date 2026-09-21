@@ -970,6 +970,9 @@ input, select {
   padding-right: var(--space-md);
   border-left: 1px solid var(--color-hairline-light);
   padding-left: var(--space-md);
+  /* Ensure counter items never flush against viewport edges on mobile */
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
 }
 .trust-item:first-child { border-left: none; padding-left: 0; }
 
@@ -1485,24 +1488,31 @@ input, select {
 .enquiry-modal-card {
   position: relative;
   width: 100%;
-  max-width: 440px;
-  max-height: calc(100vh - 2 * var(--space-lg));
-  overflow-y: auto;
+  max-width: 460px;
+  /* Remove overflow-y scroll — all content must fit without scrolling.
+     Use a generous max-height safety net only for extremely tiny screens
+     (< 480px), but the default layout should never need it. */
+  max-height: 95dvh;
+  overflow-y: visible;
   background: var(--color-bg-light);
   border-radius: var(--radius-lg);
-  /* var(--space-xl) (64px) on every side left almost no room for content
-     on narrow viewports — a fixed, more modest pad works at every size. */
-  padding: 2rem;
+  padding: 1.75rem 2rem 1.75rem;
   transform: translateY(16px) scale(0.98);
   transition: transform var(--duration-fast) var(--ease-premium);
   box-shadow: 0 40px 80px -30px rgba(0,0,0,0.5);
 }
 .enquiry-modal.is-open .enquiry-modal-card { transform: translateY(0) scale(1); }
 .enquiry-modal-card h3 {
-  font-size: 1.6rem;
-  margin: 0.3em 0 0.4em;
+  font-size: 1.45rem;
+  margin: 0.25em 0 0.3em;
+  color: var(--color-ink);
 }
-.enquiry-modal-card p { color: var(--color-ink-soft); margin-bottom: var(--space-lg); }
+.enquiry-modal-card p {
+  color: var(--color-ink-soft);
+  font-size: var(--fs-small);
+  margin-bottom: var(--space-md);
+  line-height: 1.5;
+}
 .enquiry-modal-close {
   position: absolute;
   top: var(--space-md);
@@ -1513,6 +1523,42 @@ input, select {
   border: 1px solid var(--color-hairline-light);
   color: var(--color-ink);
 }
+/* Override the dark-surface form-row colours for the light modal card.
+   The global .form-row input/select styles use --color-bg-dark-2 as
+   background and --color-cream as text — correct on the Contact section
+   (dark surface) but invisible on this light card. */
+.enquiry-modal-card .form-row label {
+  color: var(--color-ink-soft);
+  font-size: 0.72rem;
+}
+.enquiry-modal-card .form-row input,
+.enquiry-modal-card .form-row select {
+  background: var(--color-stone-200);
+  border: 1px solid var(--color-stone-300);
+  color: var(--color-ink);
+  font-size: 1rem;
+  padding: 0.75em 1em;
+  border-radius: var(--radius-sm);
+}
+.enquiry-modal-card .form-row input::placeholder {
+  color: var(--color-ink-soft);
+  opacity: 0.6;
+}
+.enquiry-modal-card .form-row input:focus,
+.enquiry-modal-card .form-row select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: #fff;
+}
+.enquiry-modal-card select option {
+  background: #fff;
+  color: var(--color-ink);
+}
+.enquiry-modal-card .form-status {
+  color: var(--color-ink-soft);
+}
+.enquiry-modal-card .form-status.is-success { color: #3a7d4a; }
+.enquiry-modal-card .enquiry-form { display: grid; gap: var(--space-sm); }
 .enquiry-form .btn {
   width: 100%;
   justify-content: center;
@@ -2856,6 +2902,25 @@ a.cta-direct-item:hover { color: var(--color-cream); }
      (a previous override on nth-child(3)/nth-child(2) at this breakpoint
      had it backwards, adding the divider back to item 3 instead of item 2). */
   .trust-number { font-size: clamp(1.8rem, 5vw, 2.4rem); }
+
+  /* Mobile counter spacing — items on right column were flush against the
+     screen edge with no breathing room. Add horizontal padding to the
+     grid container so all counters stay inset from both sides. */
+  #about .trust-grid.row {
+    padding-inline: var(--space-sm);
+  }
+  .trust-item {
+    padding-inline: var(--space-sm);
+  }
+  .trust-item:first-child {
+    padding-left: var(--space-sm);
+  }
+  .trust-item:nth-child(odd) {
+    border-left: none;
+  }
+  .trust-item:nth-child(even) {
+    border-left: 1px solid var(--color-hairline-light);
+  }
 
   /* ── Karjat Advantage ── */
   /* Advantage rows get a tighter 3-col track on phone: icon, copy, time */
