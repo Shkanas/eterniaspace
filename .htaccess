@@ -1,0 +1,85 @@
+# ==========================================================================
+# ETERNIA SPACE KARJAT — Apache config for browser caching + compression.
+# Written for shared/Apache hosting (the common default for a static site
+# like this). If the live host is Nginx, Vercel, Netlify or Cloudflare
+# Pages instead, this file is ignored and the equivalent config must be set
+# in that platform's own config (nginx.conf, vercel.json headers, _headers,
+# or Cloudflare Cache Rules) — ask before assuming this file is in effect.
+# ==========================================================================
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType text/javascript "access plus 1 week"
+
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType application/xml "access plus 1 day"
+  ExpiresByType text/plain "access plus 1 day"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(webp|jpe?g|png|svg|ico|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/xml text/plain
+  AddOutputFilterByType DEFLATE application/javascript text/javascript
+  AddOutputFilterByType DEFLATE application/xml application/rss+xml
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType image/webp .webp
+  AddType font/woff2 .woff2
+</IfModule>
+
+# ==========================================================================
+# SECURITY HEADERS
+# The four below are low-risk — they don't depend on knowing every origin
+# the page loads from, so they're enabled unconditionally.
+#
+# HTTPS: this file has nothing HTTP-specific in it and needs no changes to
+# go live over HTTPS. The one thing to actually DO at deploy time (outside
+# this file's control) is get the host issuing a valid TLS certificate
+# (Let's Encrypt/AutoSSL on shared hosting, or the platform's own managed
+# cert on Vercel/Netlify/Cloudflare) and confirm plain-HTTP requests
+# redirect to HTTPS. Once that's true, uncomment the HSTS line below —
+# shipping HSTS before HTTPS is actually enforced can lock visitors out of
+# the site over HTTP with no easy way back for the cache lifetime of the
+# header, so it's commented out until that's confirmed on the live host.
+# ==========================================================================
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+  # Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
+  # Content-Security-Policy — commented out by default. The page has been
+  # kept CSP-ready (zero inline <script>, zero inline style="" attributes —
+  # see index.html/style.css comments where those were removed), so this
+  # exact policy should work, but it was written against the CDN origins
+  # this build uses TODAY (Google Fonts, jsdelivr for GSAP/Lenis, YouTube
+  # for testimonial embeds) and hasn't been verified against the live,
+  # HTTPS-served site — enable it there first with the browser console
+  # open and watch for blocked-resource errors before relying on it.
+  # Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; frame-src https://www.youtube-nocookie.com; connect-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+</IfModule>

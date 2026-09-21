@@ -1,0 +1,2986 @@
+/* ==========================================================================
+   ETERNIA SPACE, KARJAT — STYLESHEET
+   "Elevated Ground" visual system
+
+   TABLE OF CONTENTS
+   1.  Design Tokens (CSS variables) — EDIT COLORS/FONTS HERE
+   2.  Font-face / font loading
+   3.  Reset & base
+   4.  Layout helpers
+   5.  Buttons
+   6.  Navigation
+   7.  Hero
+   8.  Trust Strip
+   9.  Karjat Advantage (scroll-linked)
+   10. Configurations & Pricing
+   11. Amenities Bento Gallery
+   12. Construction Progress Timeline
+   13. Testimonials
+   14. RERA / Transparency
+   15. Site Visit CTA Form
+   16. Footer
+   17. Utilities / animation states
+   18. Media queries (mobile-first overrides live inline per-section too)
+   ========================================================================== */
+
+/* ==========================================================================
+   1. DESIGN TOKENS
+   Change the project's entire look by editing these variables only.
+   ========================================================================== */
+:root {
+  /* ---- Core palette (do not use pure #fff / #000 anywhere) ---- */
+  --color-bg-light: #F6F3EC;       /* warm off-white / soft stone */
+  --color-bg-dark: #1F2E23;        /* deep forest/pine green */
+  --color-bg-dark-2: #24352A;      /* secondary dark, panels on dark bg */
+  --color-accent: #B9673F;         /* warm terracotta/clay — CTAs & key numbers ONLY */
+  --color-accent-hover: #A2582F;
+  /* --color-accent itself fails WCAG AA (4.5:1) as TEXT against every
+     background it sits on — 3.1-3.7:1 depending on the surface, confirmed
+     by a real Lighthouse accessibility run. It's fine as a background
+     (buttons) or for icons/borders (non-text UI only needs 3:1), but any
+     place accent is the actual glyph colour on light or dark backgrounds
+     uses one of these two instead. Same hue family, tuned for contrast. */
+  --color-accent-on-dark: #E0996F;  /* accent text on --color-bg-dark / -dark-2, ~5.5-6:1 */
+  --color-accent-on-light: #8A4A2C; /* accent text on --color-bg-light / --color-stone-200, ~5.5-6:1 */
+
+  /* ---- TruePricePoster (hero, right column) — its own near-black-green,
+     deliberately darker than --color-bg-dark so the card reads as a solid,
+     opaque object floating over a busy photo, not just another dark
+     section. Contrast checked (see js/build notes): cream 14.65:1, cream-
+     soft 10.76:1, accent-on-dark 6.92:1 against this bg; cream 4.78:1
+     against the price sub-card's own background below (text on that one
+     card must stay full-opacity cream — cream-soft there drops to 3.5:1
+     and fails). */
+  --color-poster-bg: #12241B;
+  --color-poster-price-bg: #A9532C;
+  --color-poster-check: #E08A5B;    /* icon only — 6.15:1, but icons only need 3:1 */
+
+  /* ---- Neutrals, derived from the base palette (warm, never neutral-gray) ---- */
+  --color-ink: #23201B;            /* body text on light bg */
+  --color-ink-soft: #55503F;       /* secondary text on light bg */
+  --color-stone-200: #EDE8DB;      /* card bg / hairline surfaces on light */
+  --color-stone-300: #DFD8C6;      /* borders on light */
+  --color-cream: #F6F3EC;          /* == bg-light, semantic alias */
+  --color-cream-soft: #D9D2BF;     /* muted text on dark bg */
+  --color-cream-faint: rgba(246, 243, 236, 0.55);
+  --color-hairline-dark: rgba(246, 243, 236, 0.14);
+  --color-hairline-light: rgba(35, 32, 27, 0.12);
+
+  /* ---- Typography ----
+     Round 6 pivot: the heavy geometric Unbounded display (used at 800-900
+     everywhere, plus a gradient fill on hero emphasis words) read as
+     bold/chunky rather than precise — replaced with a more restrained,
+     premium system: Montserrat (600/700 only — nothing heavier) for
+     headings/emphasis, Open Sans (400/500/600) for body/UI text. Space
+     Mono stays for data/prices; that reasoning never changed. */
+  --font-headline: 'Montserrat', 'Arial', sans-serif;
+  --font-body: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Space Mono', 'JetBrains Mono', 'Courier New', monospace;
+
+  /* fluid type scale */
+  --fs-hero: clamp(40px, 5.5vw, 84px);
+  --fs-h2: clamp(2rem, 1.6rem + 2vw, 3.4rem);
+  --fs-h3: clamp(1.35rem, 1.2rem + 0.8vw, 1.9rem);
+  --fs-body-lg: clamp(1.05rem, 1rem + 0.3vw, 1.25rem);
+  /* Base body copy, site-wide: 19px / 1.6 line-height (set on body{} below).
+     Nothing on the page should render smaller than 12px (0.75rem) —
+     everything under that threshold elsewhere in this file was bumped up
+     to it as part of this pass. */
+  --fs-body: 19px;
+  --fs-small: 0.875rem;
+  --fs-mono-stat: clamp(2.25rem, 1.8rem + 2vw, 4rem);
+
+  /* ---- Spacing scale ---- */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2.5rem;
+  --space-xl: 4rem;
+  --space-2xl: 6rem;
+  --space-3xl: 9rem;
+
+  --section-pad-y: clamp(4rem, 3rem + 5vw, 8rem);
+  --container-pad-x: clamp(1.25rem, 4vw, 4rem);
+  --container-max: 1440px;
+
+  /* ---- Motion / radius ---- */
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 0.25s;
+  --duration-mid: 0.6s;
+  --duration-slow: 1s;
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --radius-lg: 20px;
+
+  /* Reusable <RollText> hover roll — see §17c. Slower and gentler than the
+     site's general --duration-mid/--ease-premium so the roll reads as a
+     deliberate, weighty motion rather than a snap — cubic-bezier(0.16, 1,
+     0.3, 1) ("expo-out") decelerates smoothly all the way to rest instead
+     of the sharper settle of --ease-premium. */
+  --roll-duration: 0.9s;
+  --roll-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Location-row icon dome-fill — see §9b, faster than the text roll */
+  --dome-duration: 0.3s;
+
+  --nav-height: 84px;
+}
+
+/* ==========================================================================
+   2. FONT LOADING
+   Loaded via Google Fonts CDN for build simplicity. For production
+   performance, download woff2 files and swap this block for local
+   @font-face rules pointing at /assets/fonts/ — the --font-* variables
+   above are the only thing consuming these names, so nothing else changes.
+   ========================================================================== */
+/* Google Fonts <link> tags with preconnect live in index.html <head> for
+   preloading priority. This file only declares fallback stacks above. */
+
+/* ==========================================================================
+   3. RESET & BASE
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: auto; /* Lenis takes over smooth scrolling in JS */
+  /* Also set on body below, but Lenis scrolls the document element itself —
+     without this too, a few px of incidental overflow (Bootstrap's .row
+     negative margins, decorative motifs) could let the whole page scroll
+     sideways, which then makes position:fixed UI (modals, the custom
+     cursor) look like it's clipped or shifted. */
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-light);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-headline);
+  /* Montserrat is only loaded at 500/600/700 (see the font tokens above) —
+     800/900 aren't real cuts of it, so the base default now caps at 700,
+     the heaviest weight actually shipped. */
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-md);
+  color: inherit;
+}
+
+p { margin: 0 0 var(--space-sm); }
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, select {
+  font-family: var(--font-body);
+}
+
+.mono { font-family: var(--font-mono); }
+
+/* ==========================================================================
+   4. LAYOUT HELPERS
+   ========================================================================== */
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-pad-x);
+}
+
+.section {
+  padding-block: var(--section-pad-y);
+  position: relative;
+}
+
+.section-light { background: var(--color-bg-light); color: var(--color-ink); }
+.section-dark { background: var(--color-bg-dark); color: var(--color-cream); }
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* .eyebrow appears almost everywhere on dark sections; the one light-bg
+     exception (the enquiry modal card) overrides this below. */
+  color: var(--color-accent-on-dark);
+  margin-bottom: var(--space-sm);
+}
+.enquiry-modal-card .eyebrow { color: var(--color-accent-on-light); }
+
+.section-heading {
+  max-width: 46rem;
+  margin-bottom: var(--space-xl);
+}
+
+.section-heading h2 {
+  font-size: var(--fs-h2);
+}
+
+.section-heading p {
+  font-size: var(--fs-body-lg);
+  color: var(--color-ink-soft);
+  max-width: 38rem;
+}
+
+.section-dark .section-heading p { color: var(--color-cream-soft); }
+
+/* ==========================================================================
+   5. BUTTONS
+   ========================================================================== */
+/* Every .btn's hover lives entirely in colour/fill — never position or
+   scale. (A mousemove-driven "magnetic" translate used to nudge these
+   toward the cursor; it read as jittery, not premium, and has been
+   removed outright — see js/main.js §3.) .btn-primary's hover is a fill
+   sweep: an inner layer scales in from the left on `transform`, which is
+   cheap to animate, but the BUTTON's own box never moves. */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.95em 1.9em;
+  border-radius: 100px;
+  font-family: var(--font-headline);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  transition: border-color var(--duration-fast) var(--ease-premium),
+              color var(--duration-fast) var(--ease-premium);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  overflow: hidden;
+  background: var(--color-accent-hover);
+  color: var(--color-bg-light);
+  z-index: 0;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-accent);
+  transform: scaleX(1);
+  transform-origin: left;
+  transition: transform var(--duration-mid) var(--ease-premium);
+}
+.btn-primary:hover::before { transform: scaleX(0); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-cream);
+  border: 1px solid var(--color-hairline-dark);
+}
+.btn-outline:hover { border-color: var(--color-cream); }
+
+.btn-outline-dark {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline-light);
+}
+.btn-outline-dark:hover { border-color: var(--color-ink); }
+
+/* ==========================================================================
+   6. NAVIGATION
+   ========================================================================== */
+.site-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+  background: transparent;
+  transition: background-color var(--duration-mid) var(--ease-premium),
+              box-shadow var(--duration-mid) var(--ease-premium);
+}
+
+.site-nav.is-scrolled {
+  background: var(--color-bg-dark);
+  box-shadow: 0 1px 0 var(--color-hairline-dark);
+}
+
+.site-nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.nav-logo {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--color-cream);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.nav-logo strong { color: var(--color-accent-on-dark); font-weight: 500; }
+
+.nav-links {
+  display: flex;
+  gap: var(--space-lg);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  font-size: 15px;
+  color: var(--color-cream-soft);
+  text-transform: none;
+  letter-spacing: normal;
+  position: relative;
+  padding-bottom: 4px;
+  transition: color var(--duration-fast) ease;
+}
+.nav-links a:hover { color: var(--color-cream); }
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 0; height: 1px;
+  background: var(--color-accent);
+  transition: width var(--duration-fast) var(--ease-premium);
+}
+.nav-links a:hover::after { width: 100%; }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+.nav-phone {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  color: var(--color-cream);
+  white-space: nowrap;
+}
+
+.nav-toggle {
+  display: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hairline-dark);
+  position: relative;
+  flex-shrink: 0;
+}
+/* Animated hamburger <-> close (X) icon. The bars live on .nav-toggle span
+   and its ::before/::after pseudo-elements; those pseudo-elements are
+   positioned relative to the SPAN's own box (it establishes the containing
+   block, since it's itself position:absolute), not the button — so their
+   left/right MUST be 0 (full width of the already-inset span) rather than
+   re-applying the button's 12px inset a second time. (A previous version
+   applied left:12px/right:12px to all three in one grouped selector, which
+   left ::before/::after with zero — even negative — computed width, making
+   the top/bottom bars invisible in both the hamburger and X states.) */
+.nav-toggle span,
+.nav-toggle span::before,
+.nav-toggle span::after {
+  content: '';
+  position: absolute;
+  left: 12px; right: 12px;
+  height: 1.5px;
+  background: var(--color-cream);
+  border-radius: 1px;
+  transition: transform var(--duration-mid) var(--ease-premium),
+              opacity var(--duration-fast) ease,
+              background-color var(--duration-fast) ease;
+}
+.nav-toggle span { top: 50%; transform: translateY(-50%); }
+.nav-toggle span::before { left: 0; right: 0; top: -7px; }
+.nav-toggle span::after { left: 0; right: 0; top: 7px; }
+.nav-toggle.is-active span { background: transparent; }
+.nav-toggle.is-active span::before { top: 0; transform: rotate(45deg); }
+.nav-toggle.is-active span::after { top: 0; transform: rotate(-45deg); }
+.nav-toggle { transition: border-color var(--duration-fast) ease, transform var(--duration-fast) var(--ease-premium); }
+.nav-toggle:active { transform: scale(0.9); }
+@media (hover: hover) {
+  .nav-toggle:hover { border-color: var(--color-cream); }
+}
+
+/* mobile side panel */
+.nav-panel {
+  position: fixed;
+  top: 0; right: 0;
+  height: 100vh;
+  width: min(86vw, 400px);
+  background: var(--color-bg-dark-2);
+  z-index: 999;
+  transform: translateX(100%);
+  transition: transform var(--duration-mid) var(--ease-premium);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-lg);
+  /* Safety net for very short viewports (landscape phones, small tablets in
+     landscape) — the panel's content is vertically centered, not top-
+     anchored, so on a short-enough screen it could otherwise clip instead
+     of scrolling. */
+  overflow-y: auto;
+}
+.nav-panel.is-open { transform: translateX(0); }
+
+.nav-panel-links {
+  list-style: none;
+  margin: 0 0 var(--space-xl);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.nav-panel-links a {
+  display: block;
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 1.7rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--color-cream);
+  /* Real vertical padding on the tappable link itself (not just the row
+     gap) — a comfortable touch target and the "breathing room between
+     items" a default/cramped list otherwise lacks. */
+  padding-block: 0.22em;
+  transition: color var(--duration-fast) ease;
+}
+@media (hover: hover) {
+  .nav-panel-links a:hover { color: var(--color-accent-on-dark); }
+}
+/* Was inline style="" on both elements — moved here so the page has no
+   inline styles left, which is what a Content-Security-Policy without
+   'unsafe-inline' in style-src requires (see .htaccess for the header). */
+.nav-panel-phone { margin-bottom: 1rem; }
+.nav-panel-cta { align-self: flex-start; }
+
+.nav-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 26, 20, 0.5);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-mid) ease;
+}
+.nav-scrim.is-open { opacity: 1; pointer-events: auto; }
+
+/* ==========================================================================
+   7. HERO
+   ========================================================================== */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-end;
+  color: var(--color-cream);
+  overflow: hidden;
+}
+
+.hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* photographic overlay for depth/legibility instead of a UI gradient */
+  background: linear-gradient(180deg, rgba(20,26,18,0.55) 0%, rgba(20,26,18,0.25) 35%, rgba(20,26,18,0.85) 100%);
+}
+
+/* ==========================================================================
+   7a. HERO GRID — 12 columns, 80px side padding, 24px gutters. Left column
+   (1-7) is the existing eyebrow/headline/copy/CTA stack, reflowed rather
+   than rebuilt; a deliberately empty column 8 separates it from the
+   TruePricePoster in columns 9-12. The two halves align differently on
+   purpose: the text stays bottom-anchored (matching the hero's original
+   composition), the poster is vertically centered — see .true-price-poster
+   below.
+   ========================================================================== */
+.hero-grid {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: 24px;
+  padding-inline: 80px;
+  align-items: end;
+}
+
+.hero-content {
+  grid-column: 1 / 8;
+  /* Only 4 text elements live here (eyebrow, headline, subtext, CTA) — the
+     quick-facts strip that used to crowd this box now lives in its own
+     component just below the hero, see .quick-facts. */
+  padding-top: calc(var(--nav-height) + var(--space-lg));
+  padding-bottom: var(--space-xl);
+}
+
+.hero-eyebrow {
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-cream-soft);
+  margin-bottom: var(--space-md);
+  display: block;
+  overflow: hidden;
+}
+
+.hero-title {
+  font-size: var(--fs-hero);
+  font-weight: 600;
+  /* Tightened from 1.15 — at this size the extra leading was the biggest
+     single contributor to the column reading as loose/disconnected. */
+  line-height: 1.08;
+  max-width: 640px;
+  /* Lets the browser pick better break points than "wrap whenever a line
+     runs out of room" — avoids a lonely last word or a ragged short line. */
+  text-wrap: balance;
+  color: var(--color-cream);
+  /* Headline, paragraph and button now read as one composed block instead
+     of three separately-spaced pieces — see .hero-sub below for the
+     matching reduction. */
+  margin-bottom: var(--space-sm);
+}
+/* Round 6: the gradient-fill emphasis on "hills" is gone — plain cream,
+   same as the rest of the headline, per the new typography direction. The
+   <em> tag stays in the markup (semantic emphasis, and js/main.js's
+   split-text reveal still targets it) but no longer changes how the word
+   looks. */
+.hero-title em {
+  font-style: normal;
+  color: inherit;
+}
+
+/* Split-text reveal scaffolding — js/main.js wraps each word of the eyebrow
+   and headline in .split-line > .split-word on load, then animates the
+   inner span up into view. The overflow:hidden line clips the slide. */
+.split-line {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+.split-word {
+  display: inline-block;
+  will-change: transform;
+}
+
+.hero-sub {
+  font-size: var(--fs-body-lg);
+  max-width: 34rem;
+  color: var(--color-cream-soft);
+  margin-bottom: var(--space-md);
+}
+:where(.js) .hero-sub {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.hero-sub.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.8s var(--ease-premium), transform 0.8s var(--ease-premium);
+}
+
+/* ==========================================================================
+   7b. TRUEPRICEPOSTER — hero right column. Its own opaque, near-black-green
+   card so it reads as a solid object over the busy photo behind it, not
+   another translucent overlay.
+
+   Sizing: no fixed/min height — the card is exactly as tall as its
+   (tightened) content needs, which comfortably clears typical laptop/
+   desktop viewport heights alongside the nav bar. max-height + overflow-y
+   is a pure safety net for unusually short viewports, not the primary fix
+   — it should never actually engage on any realistic screen. Entrance
+   motion is the standard [data-reveal] fade+settle (see §17 utilities) —
+   no bespoke animation code.
+   ========================================================================== */
+.true-price-poster {
+  grid-column: 9 / 13;
+  align-self: center;
+  justify-self: end;
+  width: 412px;
+  max-width: 100%;
+  max-height: calc(100vh - var(--nav-height) - 48px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  background: var(--color-poster-bg);
+  border: 1px solid rgba(246, 239, 227, 0.16);
+  border-radius: 24px;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.55), 0 12px 32px -10px rgba(0, 0, 0, 0.35);
+  color: var(--color-cream);
+  position: relative;
+}
+
+/* A real flex item between .tpp-top and .tpp-bottom, not an absolute overlay
+   — the price card below has its own solid fill and would otherwise cover
+   the hills completely whenever it's tall enough to reach them (which it
+   always was). Sitting in the gap keeps them genuinely visible, "near the
+   bottom" of the top block, regardless of how tall either section runs. */
+.tpp-hills {
+  flex: none;
+  width: 100%;
+  height: 28px;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.tpp-top,
+.tpp-bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tpp-rera-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(246, 239, 227, 0.14);
+}
+.tpp-rera-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.tpp-rera-label {
+  font-size: 12px;
+  color: var(--color-cream-soft);
+}
+.tpp-rera-number {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-cream);
+}
+.tpp-rera-link {
+  font-size: 12px;
+  color: var(--color-accent-on-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+.tpp-qr {
+  flex: none;
+  border-radius: 6px;
+  background: var(--color-cream);
+}
+
+.tpp-title {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  /* Trimmed from 52px so the card's total content height reliably fits a
+     typical laptop viewport alongside the nav — still clearly the largest,
+     most prominent text in the card (the price figure below is next at
+     32px). */
+  font-size: 38px;
+  line-height: 1.05;
+  margin: 0;
+}
+.tpp-title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tpp-check {
+  flex: none;
+  width: 0.62em;
+  height: 0.62em;
+  color: var(--color-poster-check);
+}
+
+.tpp-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  color: var(--color-cream-soft);
+}
+.tpp-pin {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent-on-dark);
+}
+
+.tpp-price-card {
+  background: var(--color-poster-price-bg);
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tpp-price-label {
+  /* Must stay full-opacity cream, not --color-cream-soft — on this specific
+     background --color-cream-soft measures 3.5:1 and fails AA; plain cream
+     measures 4.78:1 and passes. See the --color-poster-* token comments. */
+  font-size: 14px;
+  color: var(--color-cream);
+}
+.tpp-price-value {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  /* Trimmed from 42px alongside the title above — still the second-largest
+     text in the card by a clear margin. */
+  font-size: 32px;
+  line-height: 1.1;
+  color: var(--color-cream);
+}
+
+.tpp-cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.tpp-enquire-btn {
+  background: var(--color-cream);
+  color: var(--color-poster-bg);
+  font-family: var(--font-headline);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 0.85em 1.6em;
+  border-radius: 100px;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) ease;
+}
+.tpp-enquire-btn:hover { background: #fff; }
+.tpp-phone-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-cream);
+  transition: color var(--duration-fast) ease;
+}
+.tpp-phone-link:hover { color: var(--color-accent-on-dark); }
+.tpp-phone-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent-on-dark);
+}
+
+/* ==========================================================================
+   7c. QUICK FACTS — the strip that used to live inside the hero (Configurations
+   / Starting At / Karjat Station) now floats as its own card straddling the
+   hero/next-section seam, so the hero itself never has to fight for space.
+   ========================================================================== */
+.quick-facts-wrap {
+  position: relative;
+  z-index: 3;
+  /* Straddles the hero/About seam, but with real breathing room above it
+     (var(--space-2xl) of hero padding-bottom already separates it from the
+     "Schedule a Site Visit" button — this only pulls it up over the seam,
+     it never crowds the button itself). */
+  margin-top: -48px;
+}
+.quick-facts {
+  background: var(--color-bg-dark-2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-lg) var(--space-xl);
+  align-items: start;
+  box-shadow: 0 30px 60px -24px rgba(15, 18, 13, 0.45);
+}
+.quick-fact {
+  /* justify-self: start (overriding CSS Grid's default justify-items:
+     stretch) — without it, every card claimed the FULL 1fr column width as
+     its own box even though "Karjat" or "5 min" only need a fraction of
+     it, so hovering in that dead space to the right of short text still
+     triggered the card's <RollText>. Shrinking the box to its own content
+     width makes the hoverable area match what's actually visible. */
+  justify-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+}
+.quick-fact-icon {
+  /* Up from 30px — noticeably larger/cleaner, still the plain thin-line
+     treatment with no circular badge behind it. Stroke scales with the
+     viewBox automatically, so relative line weight stays the same. */
+  width: 42px;
+  height: 42px;
+  color: var(--color-accent);
+  margin-bottom: 4px;
+}
+.quick-fact .label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-cream-soft);
+}
+.quick-fact .value {
+  font-family: var(--font-headline);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--color-cream);
+}
+.quick-fact .value .accent { color: var(--color-accent-on-dark); }
+.quick-fact-enquiry {
+  cursor: pointer;
+}
+.quick-fact-enquiry .value {
+  color: var(--color-accent-on-dark);
+  transition: color var(--duration-fast) var(--ease-premium);
+}
+/* Colour-only hover (no lift/translate) — same "motion via fill, never
+   position" rule applied to every button, see css/style.css §5. */
+.quick-fact-enquiry:hover .value { color: var(--color-cream); }
+
+/* ==========================================================================
+   7d. ABOUT — short description + large image, sits above the stat strip
+   ========================================================================== */
+/* Reusable decorative motif — an absolutely-positioned SVG sitting behind a
+   section's content, low-opacity, never intercepting clicks. */
+.section-motif {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--color-ink);
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+#about { overflow: hidden; }
+.about-layout { position: relative; z-index: 1; margin-bottom: var(--space-2xl); }
+#about .trust-grid, #about .trust-marquee { position: relative; z-index: 1; }
+/* The project's own name/place — promoted to full section-title scale and
+   weight (matching every other section's h2) instead of the small mono
+   eyebrow treatment it used to share with topic labels like "Why Karjat". */
+.about-title {
+  font-size: var(--fs-h2);
+}
+.about-lede {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: var(--fs-body-lg);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--color-accent-on-light);
+  margin-bottom: var(--space-md);
+}
+.about-copy p {
+  color: var(--color-ink-soft);
+  max-width: 36rem;
+}
+.about-copy .btn { margin-top: var(--space-sm); }
+.about-media {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+.about-media img { width: 100%; height: 100%; object-fit: cover; }
+.about-media .media-caption {
+  position: absolute;
+  left: var(--space-md);
+  top: var(--space-md);
+  z-index: 2;
+}
+/* Scale-in reveal instead of the generic slide-up — the About image is the
+   first large photograph after the hero, so it gets its own distinct entrance. */
+:where(.js) .about-media[data-reveal] {
+  opacity: 0;
+  transform: scale(0.92);
+}
+.about-media[data-reveal].is-visible {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 1s var(--ease-premium), transform 1s var(--ease-premium);
+}
+
+/* ==========================================================================
+   8. TRUST STRIP
+   ========================================================================== */
+.trust-strip,
+#about .trust-grid {
+  padding-top: var(--space-2xl);
+  border-top: 1px solid var(--color-hairline-light);
+}
+
+/* .trust-grid layout comes from Bootstrap's .row / .col-* grid (see index.html);
+   this class only carries visual styling now. */
+.trust-item {
+  text-align: left;
+  padding-right: var(--space-md);
+  border-left: 1px solid var(--color-hairline-light);
+  padding-left: var(--space-md);
+}
+.trust-item:first-child { border-left: none; padding-left: 0; }
+
+.trust-number {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: var(--fs-mono-stat);
+  color: var(--color-accent-on-light);
+  line-height: 1;
+  display: block;
+  margin-bottom: var(--space-xs);
+}
+
+.trust-label {
+  font-size: var(--fs-small);
+  color: var(--color-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ==========================================================================
+   9. KARJAT ADVANTAGE — sticky media panel + scrolling stat list
+   One side (the site photo) stays pinned in the viewport via position:sticky
+   while the eight location facts scroll past it on the other side, each
+   lighting up as it crosses the panel. Replaces the old pinned horizontal
+   card-track entirely — see js/main.js §6.
+   ========================================================================== */
+.advantage-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 38%) 1fr;
+  gap: var(--space-2xl);
+  align-items: start;
+  margin-top: var(--space-xl);
+}
+
+.advantage-media {
+  position: sticky;
+  top: calc(var(--nav-height) + var(--space-lg));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+}
+.advantage-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Base scale of 1.05 (shared with every [data-scroll-zoom] image, see §17d)
+     gives GSAP scrollTrigger headroom to grow the image further as the
+     section scrolls, without ever revealing the image's edge/letterboxing
+     inside the rounded frame. */
+}
+.advantage-media .media-caption {
+  position: absolute;
+  left: var(--space-md);
+  top: var(--space-md);
+  z-index: 2;
+}
+.advantage-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20,26,18,0) 45%, rgba(20,26,18,0.8) 100%);
+}
+/* Rounded-pill media overlay label — shared by every large photo on the
+   site that needs a short location/project tag (Location Advantage panel,
+   the About/Eternia photo, and reused wherever else a pill tag sits on an
+   image). Positioning (top vs bottom, left vs right) is set per-parent. */
+.media-caption {
+  color: var(--color-cream);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  background: rgba(20, 22, 18, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(245, 241, 232, 0.18);
+  border-radius: 999px;
+  padding: 0.5em 1.1em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  width: max-content;
+  /* On narrow screens "Eternia Space, Karjat · site view" is wider than
+     the pill has room for; the parent media frame clips overflow, which
+     was silently cutting the pill's right cap and last word off instead
+     of just looking a little cramped. Capping width and allowing wrap
+     keeps the whole label visible on two lines instead. */
+  max-width: calc(100% - 2 * var(--space-md));
+  white-space: normal;
+}
+.media-caption .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex: none;
+}
+
+.advantage-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.advantage-row {
+  display: grid;
+  grid-template-columns: 68px 1fr auto;
+  align-items: center;
+  gap: var(--space-md);
+  padding-block: var(--space-md);
+  border-bottom: 1px solid var(--color-hairline-dark);
+  opacity: 0.35;
+  transform: translateX(28px);
+  transition: opacity var(--duration-mid) var(--ease-premium), transform var(--duration-mid) var(--ease-premium);
+}
+.advantage-row:first-child { padding-top: 0; }
+.advantage-row.is-active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.advantage-row .stop-icon {
+  position: relative;
+  overflow: hidden;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  background: none;
+  border: 1px solid var(--color-hairline-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+/* Dome-fill: a liquid wave rises from the bottom on hover, its top edge
+   convex until it fully covers the box and flattens out. Animating
+   transform (not height) keeps it off the layout/paint-cost path; the
+   border-radius change is what turns the "wave" into a flat fill. */
+.advantage-row .stop-icon::before {
+  content: '';
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: 0;
+  height: 130%;
+  background: var(--color-accent);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  transform: translateY(100%);
+  transition: transform var(--dome-duration) ease-out, border-radius var(--dome-duration) ease-out;
+}
+.advantage-row .stop-icon svg {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  color: var(--color-accent);
+  stroke-width: 1.25;
+  /* Delayed by half the fill's travel time so the icon's color flips right
+     as the dome passes through its middle, both filling and draining. */
+  transition: color var(--dome-duration) ease-out;
+  transition-delay: calc(var(--dome-duration) * 0.5);
+}
+@media (hover: hover) {
+  .advantage-row:hover .stop-icon::before,
+  .advantage-row:focus-within .stop-icon::before {
+    transform: translateY(0%);
+    border-radius: 0;
+  }
+  .advantage-row:hover .stop-icon svg,
+  .advantage-row:focus-within .stop-icon svg {
+    color: var(--color-bg-dark);
+  }
+}
+/* Touch equivalent of the hover dome-fill above: js/main.js's "touch dome-
+   fill tap feedback" block toggles .is-tap-active on tap (coarse-pointer
+   devices only), briefly filling the icon exactly as a hover would, so the
+   interaction still reads as alive on a phone instead of silently doing
+   nothing because "hover" never fires there. */
+.advantage-row.is-tap-active .stop-icon::before {
+  transform: translateY(0%);
+  border-radius: 0;
+}
+.advantage-row.is-tap-active .stop-icon svg {
+  color: var(--color-bg-dark);
+}
+@media (prefers-reduced-motion: reduce) {
+  .advantage-row .stop-icon::before,
+  .advantage-row .stop-icon svg {
+    transition: none !important;
+  }
+}
+
+.advantage-row .stop-copy h3 {
+  font-size: 1.3rem;
+  /* Overrides the global h1-h4 800 weight — at this smaller, repeated-row
+     scale the heavy display weight looked cramped and shouty; a normal
+     weight reads calmer and lets the row rely on size/color for hierarchy
+     instead of brute boldness. */
+  font-weight: 500;
+  color: var(--color-cream);
+  margin-bottom: 0.2em;
+}
+.advantage-row .stop-copy p {
+  font-size: var(--fs-small);
+  color: var(--color-cream-soft);
+  margin-bottom: 0;
+  max-width: 34rem;
+}
+
+.advantage-row .stop-time {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  color: var(--color-accent-on-dark);
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  white-space: nowrap;
+}
+.advantage-row .stop-time span {
+  font-size: 0.75rem;
+  color: var(--color-cream-soft);
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* .advantage-supporting columns come from Bootstrap's .row / .col-* grid */
+.advantage-supporting {
+  margin-top: var(--space-2xl);
+  border-top: 1px solid var(--color-hairline-dark);
+  padding-top: var(--space-xl);
+}
+.advantage-supporting h4 {
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-on-dark);
+  margin-bottom: var(--space-sm);
+}
+.advantage-supporting p {
+  color: var(--color-cream-soft);
+  font-size: var(--fs-body);
+}
+
+/* ==========================================================================
+   10. CONFIGURATIONS & PRICING
+   ========================================================================== */
+/* .config-grid layout comes from Bootstrap's .row / .col-* grid (see index.html) */
+.config-card {
+  background: var(--color-stone-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+:where(.js) .config-card {
+  opacity: 0;
+  transform: translateY(32px);
+}
+.config-card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-mid) var(--ease-premium), transform var(--duration-mid) var(--ease-premium);
+}
+
+.config-card-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-stone-200);
+}
+.config-card-media img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-premium);
+}
+.config-card:hover .config-card-media img { transform: scale(1.05); }
+.config-card-badge {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  background: rgba(20, 22, 18, 0.65);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: var(--color-cream);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.35em 0.7em;
+  border-radius: 999px;
+}
+
+.config-card-body {
+  padding: var(--space-lg);
+}
+
+.config-card-body h3 {
+  font-size: 1.6rem;
+  margin-bottom: var(--space-3xs);
+}
+
+.config-price {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  color: var(--color-accent-on-light);
+  margin-bottom: var(--space-md);
+}
+.config-price span {
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  color: var(--color-ink-soft);
+  margin-left: 0.4em;
+}
+
+.config-specs {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-hairline-light);
+}
+.config-specs .spec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.config-specs .spec .num {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+}
+.config-specs .spec .lbl {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-soft);
+}
+.config-disclaimer {
+  font-size: 0.8rem;
+  color: var(--color-ink-soft);
+  margin-top: 1.5rem;
+}
+
+.view-layout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+  padding-bottom: 2px;
+}
+.view-layout-btn:hover { color: var(--color-accent-on-light); border-color: var(--color-accent-on-light); }
+
+/* lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 22, 18, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease;
+  padding: var(--space-lg);
+}
+.lightbox.is-open { opacity: 1; pointer-events: auto; }
+.lightbox-inner {
+  max-width: 900px;
+  /* The old rule (img at width:100%, no height cap) let a floor plan's
+     natural height at that width exceed the viewport on anything shorter
+     than ~900px tall, pushing the caption below it off-screen. Capping the
+     whole card to the viewport (minus the surrounding .lightbox padding)
+     and laying it out as a column lets the image shrink to fit instead. */
+  max-height: calc(100vh - var(--space-lg) * 2);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transform: scale(0.96);
+  transition: transform var(--duration-fast) var(--ease-premium);
+}
+.lightbox.is-open .lightbox-inner { transform: scale(1); }
+.lightbox-inner img {
+  width: 100%;
+  /* min-height:0 is what actually lets a flex item shrink below its
+     intrinsic content size — without it, object-fit:contain has nothing to
+     work with and the image ignores the parent's max-height entirely. */
+  min-height: 0;
+  flex: 1 1 auto;
+  object-fit: contain;
+  background: var(--color-stone-200);
+}
+.lightbox-caption {
+  flex: none;
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.lightbox-close {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--container-pad-x);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hairline-dark);
+  color: var(--color-cream);
+  font-size: 1.3rem;
+}
+
+/* ==========================================================================
+   Amenities lightbox (class kept as .gallery-lightbox) — same dark scrim
+   pattern as the floor-plan lightbox, plus Next/Previous nav and an image
+   counter. Used by the Amenities bento grid; see js/main.js §"amenities
+   lightbox".
+   ========================================================================== */
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  background: rgba(15, 17, 13, 0.94);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease;
+  padding: var(--space-lg);
+}
+.gallery-lightbox.is-open { opacity: 1; pointer-events: auto; }
+.gallery-lightbox-inner {
+  max-width: 1100px;
+  width: 100%;
+  transform: scale(0.96);
+  transition: transform var(--duration-fast) var(--ease-premium);
+}
+.gallery-lightbox.is-open .gallery-lightbox-inner { transform: scale(1); }
+.gallery-lightbox-inner img {
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  display: block;
+  margin: 0 auto;
+}
+.gallery-lightbox-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-md);
+  color: var(--color-cream-soft);
+  font-size: var(--fs-small);
+}
+.gallery-lightbox-close {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--container-pad-x);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hairline-dark);
+  color: var(--color-cream);
+}
+.gallery-lightbox-nav {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hairline-dark);
+  color: var(--color-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+.gallery-lightbox-nav:hover { background: var(--color-bg-dark-2); border-color: var(--color-accent-on-dark); color: var(--color-accent-on-dark); }
+@media (max-width: 768px) {
+  .gallery-lightbox { flex-wrap: wrap; }
+  .gallery-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); }
+  .gallery-lightbox-nav.prev { left: var(--space-sm); }
+  .gallery-lightbox-nav.next { right: var(--space-sm); }
+}
+
+/* ==========================================================================
+   Enquiry modal — scroll-triggered (once per session) or opened from the
+   hero's "Enquire Now" metric. See js/main.js §"enquiry modal".
+   ========================================================================== */
+.enquiry-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease;
+  padding: var(--space-md);
+}
+.enquiry-modal.is-open { opacity: 1; pointer-events: auto; }
+.enquiry-modal-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 17, 13, 0.72);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.enquiry-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 2 * var(--space-lg));
+  overflow-y: auto;
+  background: var(--color-bg-light);
+  border-radius: var(--radius-lg);
+  /* var(--space-xl) (64px) on every side left almost no room for content
+     on narrow viewports — a fixed, more modest pad works at every size. */
+  padding: 2rem;
+  transform: translateY(16px) scale(0.98);
+  transition: transform var(--duration-fast) var(--ease-premium);
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,0.5);
+}
+.enquiry-modal.is-open .enquiry-modal-card { transform: translateY(0) scale(1); }
+.enquiry-modal-card h3 {
+  font-size: 1.6rem;
+  margin: 0.3em 0 0.4em;
+}
+.enquiry-modal-card p { color: var(--color-ink-soft); margin-bottom: var(--space-lg); }
+.enquiry-modal-close {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hairline-light);
+  color: var(--color-ink);
+}
+.enquiry-form .btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: var(--space-xs);
+  white-space: normal;
+  text-align: center;
+}
+
+/* ==========================================================================
+   11. AMENITIES BENTO GALLERY
+   ========================================================================== */
+.amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: 220px;
+  gap: var(--space-sm);
+}
+
+.amenity-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+:where(.js) .amenity-tile {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.amenity-tile.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-mid) var(--ease-premium), transform var(--duration-mid) var(--ease-premium);
+}
+
+.amenity-tile img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-premium);
+}
+.amenity-tile:hover img { transform: scale(1.06); }
+
+.amenity-tile .tile-label {
+  position: absolute;
+  left: var(--space-sm);
+  bottom: var(--space-sm);
+  color: var(--color-cream);
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  z-index: 2;
+}
+.amenity-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20,26,18,0) 55%, rgba(20,26,18,0.75) 100%);
+  z-index: 1;
+}
+
+/* bento spans — chosen so every row's spans sum to exactly 6 columns and no
+   cell is ever left empty (11 tiles, zero gaps: see index.html §5 ordering) */
+.amenity-tile.span-2-2 { grid-column: span 2; grid-row: span 2; }
+.amenity-tile.span-2-1 { grid-column: span 2; grid-row: span 1; }
+.amenity-tile.span-3-1 { grid-column: span 3; grid-row: span 1; }
+.amenity-tile.span-4-1 { grid-column: span 4; grid-row: span 1; }
+.amenity-tile.span-4-2 { grid-column: span 4; grid-row: span 2; }
+
+/* ==========================================================================
+   11b. WHY KARJAT — icon-supported card grid (distinct from Location
+   Advantage's sticky-image list above it).
+   A native CSS Grid, not Bootstrap's .row/.col — nesting a Bootstrap row
+   directly inside this site's own .container (which has its own padding,
+   not Bootstrap's) left the row's negative gutter margins uncompensated,
+   so the card grid bled ~12px past the container edge on both sides while
+   the heading above it stayed correctly inset. Grid with no negative
+   margins can't have that problem.
+   ========================================================================== */
+#why-karjat { position: relative; overflow: hidden; }
+#why-karjat::before {
+  content: '';
+  position: absolute;
+  top: -25%;
+  right: -12%;
+  width: 55%;
+  height: 85%;
+  background: radial-gradient(circle, rgba(185, 103, 63, 0.16), transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+#why-karjat .container { position: relative; z-index: 1; }
+
+.why-karjat-grid {
+  margin-top: var(--space-xl);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.why-karjat-card {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-hairline-dark);
+  background: var(--color-bg-dark-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.why-karjat-icon {
+  position: relative;
+  overflow: hidden;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-hairline-dark);
+  color: var(--color-accent);
+  margin-bottom: var(--space-xs);
+}
+/* Same dome-fill hover as the Location Advantage icon boxes (see
+   .advantage-row .stop-icon) — a liquid wave rises from the bottom,
+   convex until it fully covers the box, draining back down on hover-out.
+   Trigger is the whole card, matching .roll-trigger on .why-karjat-card. */
+.why-karjat-icon::before {
+  content: '';
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: 0;
+  height: 130%;
+  background: var(--color-accent);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  transform: translateY(100%);
+  transition: transform var(--dome-duration) ease-out, border-radius var(--dome-duration) ease-out;
+}
+.why-karjat-icon svg {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  color: var(--color-accent);
+  transition: color var(--dome-duration) ease-out;
+  transition-delay: calc(var(--dome-duration) * 0.5);
+}
+@media (hover: hover) {
+  .why-karjat-card:hover .why-karjat-icon::before,
+  .why-karjat-card:focus-within .why-karjat-icon::before {
+    transform: translateY(0%);
+    border-radius: 0;
+  }
+  .why-karjat-card:hover .why-karjat-icon svg,
+  .why-karjat-card:focus-within .why-karjat-icon svg {
+    color: var(--color-bg-dark);
+  }
+}
+/* Touch equivalent of the hover dome-fill above — see the matching
+   .is-tap-active rule on .advantage-row for the full explanation. */
+.why-karjat-card.is-tap-active .why-karjat-icon::before {
+  transform: translateY(0%);
+  border-radius: 0;
+}
+.why-karjat-card.is-tap-active .why-karjat-icon svg {
+  color: var(--color-bg-dark);
+}
+@media (prefers-reduced-motion: reduce) {
+  .why-karjat-icon::before,
+  .why-karjat-icon svg {
+    transition: none !important;
+  }
+}
+.why-karjat-stat {
+  font-size: 2.2rem;
+  color: var(--color-accent-on-dark);
+  line-height: 1;
+}
+.why-karjat-card h3 {
+  font-size: 1.15rem;
+  color: var(--color-cream);
+  margin-bottom: 0;
+}
+.why-karjat-card p {
+  font-size: var(--fs-small);
+  color: var(--color-cream-soft);
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   12. CONSTRUCTION PROGRESS TIMELINE
+   A pinned section whose horizontal photo track advances as a function of
+   vertical scroll (GSAP ScrollTrigger scrub) — the same mechanism the old
+   Karjat Advantage section used, now put to better use here. A thin progress
+   bar tracks position through the real, dated month-by-month archive.
+   Sits on --color-bg-dark-2 with a faint blueprint grid behind it (see
+   §8 background-variation note below) so it reads as its own block instead
+   of the same flat green repeating from Why Karjat/Testimonials/Contact.
+   ========================================================================== */
+.construction-section {
+  background: var(--color-bg-dark-2);
+  position: relative;
+  overflow: hidden;
+}
+.construction-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.05;
+  background-image:
+    linear-gradient(var(--color-cream) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-cream) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+.construction-section .container { position: relative; z-index: 1; }
+
+/* Bar + percentage sit in one fixed row: the bar fills/empties, but the
+   percentage's own position never moves (only its digits change) — a
+   travelling label that slid along with the dot read as jittery/unfixed
+   while scrolling, so the read-out now lives in one steady spot, like a
+   file-download percentage next to its bar. */
+.construction-progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+}
+.construction-progress-bar {
+  flex: 1 1 auto;
+  height: 4px;
+  background: var(--color-hairline-dark);
+  border-radius: 999px;
+  position: relative;
+  overflow: visible;
+}
+.construction-progress-fill {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-hover), var(--color-accent));
+  box-shadow: 0 0 16px 1px rgba(185, 103, 63, 0.55);
+  transform-origin: left;
+  transition: width 0.05s linear;
+}
+/* Percentage read-out — fixed position, driven by the exact same
+   self.progress value from js/main.js's ScrollTrigger onUpdate that sets
+   .construction-progress-fill's width, so it can never drift out of sync.
+   A fixed min-width keeps "7%" and "100%" from nudging the bar's own length
+   as the digit count changes. */
+.construction-progress-percent {
+  flex: none;
+  min-width: 3ch;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-accent-on-dark);
+  text-align: right;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.construction-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background: var(--color-accent);
+  border: 2px solid var(--color-cream);
+  border-radius: 50%;
+  transform: translate(50%, -50%);
+  box-shadow: 0 0 0 4px rgba(185, 103, 63, 0.25);
+}
+
+.construction-pin {
+  position: relative;
+}
+.construction-viewport {
+  overflow: hidden;
+  margin-top: var(--space-lg);
+}
+.construction-track {
+  display: flex;
+  gap: var(--space-xl);
+  will-change: transform;
+}
+
+/* Swipe affordance label — hidden on desktop (the pinned scroll-scrub
+   makes the interaction obvious on its own); shown only on the touch
+   carousel tiers, see the responsive section (§18). */
+.construction-swipe-hint {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  margin-top: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-cream-soft);
+  opacity: 0.75;
+}
+.construction-swipe-hint svg { width: 14px; height: 14px; }
+
+.construction-month {
+  flex: 0 0 min(78vw, 720px);
+}
+.construction-month .month-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+.construction-month .month-label .name {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  color: var(--color-accent-on-dark);
+}
+.construction-month .month-label .idx {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  color: var(--color-cream-soft);
+}
+.construction-month .month-photos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+.construction-month .month-photo {
+  aspect-ratio: 4/3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-dark-2);
+}
+:where(.js) .construction-month .month-photo[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px) scale(0.97);
+}
+.construction-month .month-photo[data-reveal].is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity var(--duration-mid) var(--ease-premium), transform var(--duration-mid) var(--ease-premium);
+}
+.construction-month .month-photo img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-premium), filter var(--duration-fast) ease;
+}
+.construction-month .month-photo:hover img {
+  transform: scale(1.08);
+  filter: brightness(1.05);
+}
+
+/* ==========================================================================
+   13. TESTIMONIALS — editorial bento showcase
+   One large featured story (2x2), the rest of the wall as single cells, and
+   a stat tile closing out the grid instead of leaving an awkward gap (2x2 +
+   8x1x1 = 12 cells = a clean 3-row x 4-col rectangle). See index.html §8 and
+   js/main.js §"testimonials parallax" / §"testimonial video lightbox".
+   ========================================================================== */
+.testimonials-section {
+  position: relative;
+  overflow: hidden;
+  /* A soft two-tone wash (still the same dark palette) instead of the flat
+     --color-bg-dark every neighbouring section uses, so this block reads
+     as its own place even before the contour/quote motif underneath loads. */
+  background: linear-gradient(180deg, var(--color-bg-dark-2) 0%, var(--color-bg-dark) 55%, var(--color-bg-dark) 100%);
+}
+.testimonials-bg {
+  position: absolute;
+  inset: -10% 0;
+  z-index: 0;
+  pointer-events: none;
+  color: var(--color-cream);
+}
+.testimonials-contours {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 120%;
+  opacity: 0.1;
+}
+.testimonials-mark {
+  position: absolute;
+  top: -8%;
+  right: 2%;
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: min(48vw, 40rem);
+  line-height: 1;
+  color: var(--color-cream);
+  opacity: 0.07;
+  user-select: none;
+}
+.testimonials-section .container { position: relative; z-index: 1; }
+
+.testimonial-showcase {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 240px;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+.testimonial-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-bg-dark-2);
+}
+.testimonial-featured {
+  grid-column: span 2;
+  grid-row: span 2;
+  /* A quiet accent ring, not a label, anchors this tile as the cover story
+     of the grid rather than just a bigger version of the same card. */
+  box-shadow: inset 0 0 0 1.5px rgba(185, 103, 63, 0.55);
+}
+
+.testimonial-facade {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+.testimonial-facade img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform var(--duration-slow) var(--ease-premium);
+}
+.testimonial-facade:hover img { transform: scale(1.04); }
+.testimonial-facade::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20,26,18,0.05) 40%, rgba(20,26,18,0.85) 100%);
+}
+
+.play-btn {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--color-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform var(--duration-fast) var(--ease-premium);
+}
+.testimonial-featured .play-btn { width: 84px; height: 84px; }
+.testimonial-facade:hover .play-btn { transform: translate(-50%, -50%) scale(1.08); }
+.play-btn svg { width: 20px; height: 20px; fill: var(--color-bg-dark); margin-left: 3px; }
+.testimonial-featured .play-btn svg { width: 26px; height: 26px; }
+
+.testimonial-meta {
+  position: absolute;
+  left: var(--space-md);
+  bottom: var(--space-md);
+  right: var(--space-md);
+  z-index: 2;
+  color: var(--color-cream);
+}
+.testimonial-meta .eyebrow { margin-bottom: 0.3em; }
+.testimonial-meta .name {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+.testimonial-featured .testimonial-meta .name {
+  font-size: clamp(1.6rem, 1.3rem + 1.2vw, 2.4rem);
+}
+.testimonial-meta .detail {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-cream-soft);
+}
+
+/* stat tile — closes out the bento grid instead of an empty 12th cell */
+.testimonial-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  padding: var(--space-md);
+  border: 1px solid var(--color-hairline-dark);
+}
+.testimonial-stat-number {
+  font-size: clamp(2rem, 1.6rem + 1.6vw, 2.8rem);
+  color: var(--color-accent-on-dark);
+  line-height: 1;
+}
+.testimonial-stat-label {
+  font-size: var(--fs-small);
+  color: var(--color-cream-soft);
+  max-width: 14ch;
+}
+
+/* ==========================================================================
+   13b. TESTIMONIAL VIDEO LIGHTBOX — same dark-scrim + Next/Previous pattern
+   as the Amenities photo lightbox, sized for a 16:9 embed instead of a photo.
+   ========================================================================== */
+.testimonial-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  background: rgba(15, 17, 13, 0.94);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease;
+  padding: var(--space-lg);
+}
+.testimonial-lightbox.is-open { opacity: 1; pointer-events: auto; }
+.testimonial-lightbox-inner {
+  max-width: 960px;
+  width: 100%;
+  transform: scale(0.96);
+  transition: transform var(--duration-fast) var(--ease-premium);
+}
+.testimonial-lightbox.is-open .testimonial-lightbox-inner { transform: scale(1); }
+.testimonial-lightbox-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.testimonial-lightbox-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.testimonial-lightbox-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+  color: var(--color-cream-soft);
+  font-size: var(--fs-small);
+}
+.testimonial-lightbox-name {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-cream);
+}
+.testimonial-lightbox-close {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--container-pad-x);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hairline-dark);
+  color: var(--color-cream);
+}
+.testimonial-lightbox-nav {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--color-hairline-dark);
+  color: var(--color-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+.testimonial-lightbox-nav:hover { background: var(--color-bg-dark-2); border-color: var(--color-accent-on-dark); color: var(--color-accent-on-dark); }
+@media (max-width: 768px) {
+  .testimonial-lightbox { flex-wrap: wrap; }
+  .testimonial-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); }
+  .testimonial-lightbox-nav.prev { left: var(--space-sm); }
+  .testimonial-lightbox-nav.next { right: var(--space-sm); }
+}
+
+/* ==========================================================================
+   14. FOOTER REGULATORY — compact RERA badge + QR (demoted from what used
+   to be a large standalone hero-style section, see index.html §9).
+   ========================================================================== */
+.footer-rera {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.footer-rera-qr {
+  border-radius: var(--radius-sm);
+  background: var(--color-cream);
+  padding: 4px;
+  flex: none;
+}
+.footer-rera-copy p {
+  color: var(--color-cream-soft);
+  font-size: 0.85rem;
+  margin-bottom: 0.4em;
+  line-height: 1.3;
+}
+
+/* ==========================================================================
+   15. SITE VISIT CTA FORM
+   ========================================================================== */
+.cta-media {
+  position: relative;
+  margin-top: var(--space-xl);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+.cta-media img { width: 100%; height: 100%; object-fit: cover; }
+.cta-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20,26,18,0) 55%, rgba(20,26,18,0.75) 100%);
+}
+.cta-media .media-caption {
+  position: absolute;
+  left: var(--space-md);
+  bottom: var(--space-md);
+  z-index: 2;
+  color: var(--color-cream);
+  font-size: var(--fs-small);
+}
+
+.cta-direct {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-lg);
+  margin-top: var(--space-md);
+}
+.cta-direct-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: var(--fs-small);
+  color: var(--color-cream-soft);
+  transition: color var(--duration-fast) ease;
+}
+a.cta-direct-item:hover { color: var(--color-cream); }
+
+/* .cta-section columns come from Bootstrap's .row / .col-* grid */
+#contact.section {
+  position: relative;
+  overflow: hidden;
+}
+/* subtle grain texture, no gradient blobs — a fractal-noise data URI kept at
+   very low opacity and blended into the dark background for depth */
+#contact.section::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  opacity: 0.09;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Warm vignette glow — pairs with the grain above so Contact reads with its
+   own depth instead of the flat fill Why Karjat/Construction/Testimonials
+   would otherwise repeat right next to it. */
+#contact.section::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(circle at 25% 15%, rgba(185, 103, 63, 0.12), transparent 60%);
+  pointer-events: none;
+}
+#contact.section .container { position: relative; z-index: 1; }
+
+.cta-copy h2 { color: var(--color-cream); }
+
+.visit-form {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.form-row {
+  display: grid;
+  gap: var(--space-2xs);
+}
+.form-row label {
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-cream-soft);
+}
+.form-row input,
+.form-row select {
+  background: var(--color-bg-dark-2);
+  border: 1px solid var(--color-hairline-dark);
+  color: var(--color-cream);
+  padding: 0.9em 1em;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-body);
+  transition: border-color var(--duration-fast) ease;
+}
+.form-row input:focus,
+.form-row select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+.form-row .error-msg {
+  font-size: 0.78rem;
+  color: #D98C6B;
+  min-height: 1em;
+}
+.form-row.has-error input,
+.form-row.has-error select {
+  border-color: #D98C6B;
+}
+
+.form-status {
+  font-size: var(--fs-small);
+  color: var(--color-cream-soft);
+  min-height: 1.2em;
+}
+.form-status.is-success { color: #9FC9A8; }
+
+/* honeypot field — hidden from real users, visible to naive bots.
+   Server-side: reject submissions where this field is non-empty. */
+.hp-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   16. FOOTER
+   ========================================================================== */
+.site-footer {
+  /* A visibly different flat tone from #contact right above it, so the
+     CTA+Footer close of the page reads as two distinct tiers, not one more
+     repeat of --color-bg-dark. */
+  background: var(--color-bg-dark-2);
+  padding-block: var(--space-xl) var(--space-lg);
+}
+
+/* .footer-grid columns come from Bootstrap's .row / .col-* grid */
+.footer-grid {
+  padding-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--color-hairline-dark);
+  margin-bottom: var(--space-lg);
+}
+
+.footer-logo {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+  color: var(--color-cream);
+  margin-bottom: var(--space-sm);
+}
+.footer-logo strong { color: var(--color-accent-on-dark); font-weight: 500; }
+
+.footer-col h3 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-accent-on-dark);
+  margin-bottom: var(--space-sm);
+}
+.footer-col p, .footer-col a {
+  display: block;
+  color: var(--color-cream-soft);
+  /* Footer columns use a smaller size than main body (19px);
+     15px is the standard for footer navigation/contact on real websites. */
+  font-size: 15px;
+  line-height: 1.55;
+  margin-bottom: var(--space-2xs);
+  /* Prevents long email addresses overflowing their column */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.footer-col a:hover { color: var(--color-cream); }
+
+/* First footer column (logo + address) uses slightly larger text since it
+   functions as the brand block, not a navigation list. */
+.site-footer .footer-grid > [class*="col-12"][class*="col-lg-4"] > p {
+  font-size: 15px;
+  color: var(--color-cream-soft);
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.footer-social {
+  display: flex;
+  gap: 10px;
+  margin-top: var(--space-md);
+}
+.footer-social a {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(246, 243, 236, 0.2);
+  background: rgba(246, 243, 236, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-cream-soft);
+  transition: background-color 0.25s var(--ease-premium),
+              border-color    0.25s var(--ease-premium),
+              color            0.25s var(--ease-premium),
+              transform        0.25s var(--ease-premium);
+}
+@media (hover: hover) {
+  .footer-social a:hover {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-cream);
+    transform: translateY(-3px);
+  }
+}
+.footer-social svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: block;
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  font-size: 0.8rem;
+  color: var(--color-cream-soft);
+}
+
+/* ==========================================================================
+   16b. CUSTOM "VIEW" CURSOR — SCOPED
+   Deliberately narrow: the default system cursor is used everywhere on the
+   site. It is only swapped for the "VIEW" pill while hovering the specific
+   elements carrying [data-cursor="view"] — the Amenities photo grid and the
+   Testimonial video cards. cursor:none is set on those elements only, never
+   on <body>, so the system arrow returns instantly everywhere else.
+   One pill element is mounted once at the app root (see index.html, bottom)
+   and driven by js/main.js's "custom cursor" block: an outer wrapper takes
+   the raw, lerp-smoothed position every frame (no CSS transition — it's
+   already smoothed in JS), an inner element handles the show/hide
+   opacity+scale transition, so the two concerns never fight over `transform`.
+   ========================================================================== */
+[data-cursor="view"] {
+  cursor: none;
+}
+
+.view-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  pointer-events: none;
+  will-change: transform;
+}
+.view-cursor-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.6);
+  transition: opacity 0.25s var(--ease-premium), transform 0.25s var(--ease-premium);
+}
+.view-cursor.is-visible .view-cursor-inner {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .view-cursor { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-cursor-inner { transition: opacity 0.15s linear; }
+}
+
+/* ==========================================================================
+   16c. MARQUEE
+   Duplicated-content infinite strip. HTML repeats .marquee-track's children
+   twice so the 50% translate loop is seamless; JS only pauses on hover.
+   ========================================================================== */
+.marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  gap: var(--space-2xl);
+  animation: marquee-scroll 32s linear infinite;
+}
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex: none;
+}
+.marquee-item .dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.5; flex: none; }
+
+.trust-marquee {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-hairline-light);
+  color: var(--color-ink-soft);
+}
+
+.cta-marquee {
+  margin-bottom: var(--space-xl);
+}
+.cta-marquee .marquee-item {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 1rem + 2.4vw, 2.6rem);
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--color-cream-soft);
+  opacity: 0.55;
+}
+.cta-marquee .marquee-item .dot { width: 6px; height: 6px; background: var(--color-accent); opacity: 0.8; }
+
+/* ==========================================================================
+   17. UTILITIES / REVEAL STATES
+   ========================================================================== */
+/* Only hide [data-reveal] content once JS has actually taken over (see the
+   .js class added at the top of main.js). If main.js fails to load or run
+   for any reason, content stays visible by default instead of being stuck
+   at opacity:0 forever. */
+/* The hidden-state values below are the CSS-fallback starting positions.
+   When GSAP is loaded (the normal path), js/main.js §5 overrides these
+   via gsap.set() inline styles and animates with power4.out — the CSS
+   transition rules on .is-visible never fire in that case. They exist
+   purely for the no-GSAP fallback (CDN blocked / slow network). */
+:where(.js) [data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  /* expo-out — gentler deceleration than ease-premium for the fallback */
+  transition: opacity 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   17b. SITE-WIDE MOTION STANDARD — [data-reveal-head] / [data-reveal]
+   Every section follows the same two-beat rhythm: the heading settles down
+   into place first (starts a little ABOVE its resting position, eases down),
+   then supporting cards/content rise up from below shortly after (the
+   existing [data-reveal] slide-up above). Because headings sit above their
+   cards in the DOM, and both use the same scroll-observer threshold, the
+   heading naturally crosses into view — and starts settling — a beat before
+   the content below it does. No manual delay coordination needed.
+   ========================================================================== */
+:where(.js) [data-reveal-head] {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+[data-reveal-head].is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   17b-2. REVEAL DIRECTION VARIANTS — data-reveal-direction="left" | "right"
+   Bottom-to-top (above) stays the site-wide default and needs no attribute.
+   Adding data-reveal-direction="left"/"right" to a [data-reveal] or
+   [data-reveal-head] element swaps its starting offset from a Y-axis slide
+   to an X-axis one, so a split layout's two sides can converge toward the
+   center instead of both rising from the bottom. Only the starting
+   transform changes here — is-visible still resolves through the existing
+   translateY(0)/opacity rules above, which zero out X too since transform
+   is a single non-additive property, so timing/easing/duration are
+   untouched. Offsets shrink on narrow viewports (see the mobile override
+   below) so a full-width stacked column doesn't visibly clip against the
+   viewport edge mid-slide. */
+:where(.js) [data-reveal][data-reveal-direction="left"] {
+  transform: translate3d(-32px, 0, 0);
+}
+:where(.js) [data-reveal][data-reveal-direction="right"] {
+  transform: translate3d(32px, 0, 0);
+}
+:where(.js) [data-reveal-head][data-reveal-direction="left"] {
+  transform: translate3d(-32px, 0, 0);
+}
+:where(.js) [data-reveal-head][data-reveal-direction="right"] {
+  transform: translate3d(32px, 0, 0);
+}
+@media (max-width: 768px) {
+  :where(.js) [data-reveal][data-reveal-direction="left"],
+  :where(.js) [data-reveal-head][data-reveal-direction="left"] {
+    transform: translate3d(-16px, 0, 0);
+  }
+  :where(.js) [data-reveal][data-reveal-direction="right"],
+  :where(.js) [data-reveal-head][data-reveal-direction="right"] {
+    transform: translate3d(16px, 0, 0);
+  }
+}
+/* The hidden-state selectors above match [data-reveal]/[data-reveal-head]
+   directly (no is-visible requirement) at the same (attribute, attribute)
+   specificity as the base ".is-visible" reset rules further up this file,
+   so without this they'd win the tie on source order alone and the element
+   would stay offset forever, is-visible class or not. One extra attribute
+   selector here (three total) outranks both, so the reveal actually settles
+   back to center regardless of rule order. */
+[data-reveal][data-reveal-direction].is-visible,
+[data-reveal-head][data-reveal-direction].is-visible {
+  transform: translate3d(0, 0, 0);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* ==========================================================================
+   17c. <RollText> — reusable vertical slot-machine text roll on hover
+   Mark the line's own element [data-roll]; js/main.js's initRollText() wraps
+   its existing children in .roll-original and clones them (real DOM clone,
+   not a re-typed string, so mixed inline colors/markup survive exactly)
+   into an aria-hidden .roll-duplicate. Hovering the ANCESTOR carrying
+   .roll-trigger slides the original up and out while the duplicate slides
+   up into place from below; leaving reverses it via the same transition,
+   even mid-animation, because this is pure CSS transform + :hover, not a
+   JS timer. Used by the info-bar cards, the Location Advantage rows and the
+   Why Karjat stat cards — one implementation, three call sites.
+   ========================================================================== */
+.roll-text {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+.roll-text .roll-original,
+.roll-text .roll-duplicate {
+  display: block;
+  /* Descender (y g j) clearance lives on each LINE, not the outer box —
+     both lines then share the exact same height, so translateY(100%) on
+     the duplicate (a percentage of ITS OWN height) lands it perfectly
+     flush against the container's clipped edge with zero gap. Padding it
+     on the container instead (as .split-line does elsewhere) would make
+     the container taller than either line, leaving a sliver of the
+     duplicate visible through that extra padding at rest. */
+  padding-bottom: 0.18em;
+}
+.roll-text .roll-duplicate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: translateY(100%);
+}
+/* "AWAY 10 MIN" is itself a small flex row (label, number, unit) — restore
+   that layout inside each rolled line so the duplicate wraps identically. */
+.stop-time.roll-text .roll-original,
+.stop-time.roll-text .roll-duplicate {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+}
+
+@media (hover: hover) {
+  .roll-text .roll-original,
+  .roll-text .roll-duplicate {
+    transition: transform var(--roll-duration) var(--roll-ease);
+    will-change: transform;
+  }
+  .roll-trigger:hover .roll-text .roll-original,
+  .roll-trigger:focus-within .roll-text .roll-original {
+    transform: translateY(-100%);
+  }
+  .roll-trigger:hover .roll-text .roll-duplicate,
+  .roll-trigger:focus-within .roll-text .roll-duplicate {
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roll-text .roll-original,
+  .roll-text .roll-duplicate {
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   17d. SCROLL-ZOOM MEDIA — shared bidirectional scroll-linked image scale
+   Any image flagged [data-scroll-zoom] starts at this base scale (headroom
+   inside its rounded, overflow:hidden frame) and js/main.js's "scroll zoom
+   media" block scrubs it up to 1.4 as its own nearest <section> crosses the
+   viewport, exactly in step with scroll position — no lag, reverses on the
+   way back up. Used by the Location Advantage photo and the About/Eternia
+   photo.
+   ========================================================================== */
+[data-scroll-zoom] {
+  transform: scale(1.05);
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* ==========================================================================
+   17e. LIGHTBOX CONTROL STACKING
+   Every lightbox's *-inner content panel carries its own `transform`
+   (the open/close scale transition), which makes it establish a stacking
+   context of its own — and on mobile widths, where the Prev/Next buttons
+   switch to position:absolute so they can sit inset over the image edges
+   (see the "gallery/testimonial lightbox nav" mobile rules), that content
+   panel can end up painting OVER a control button it visually overlaps,
+   silently eating its taps even though the button still looks fine.
+   Pinning an explicit, higher z-index on every close/prev/next control
+   guarantees they always win, regardless of DOM order or transform state. */
+.lightbox-close,
+.gallery-lightbox-close, .gallery-lightbox-nav,
+.testimonial-lightbox-close, .testimonial-lightbox-nav {
+  z-index: 2;
+}
+
+/* ==========================================================================
+   18. RESPONSIVE
+   ========================================================================== */
+/* Nav collapses to the hamburger earlier than the general tablet breakpoint
+   below (1240px, not 991px) — the full row (logo + 6 links + phone number +
+   button) needs more than 991px of real width, and below that it was
+   cramming until the logo and phone number wrapped onto two lines instead
+   of overflowing cleanly. */
+@media (max-width: 1240px) {
+  .nav-links { display: none; }
+  .nav-phone span.phone-text { display: none; }
+  .nav-toggle { display: block; }
+  /* the primary CTA moves into the mobile side panel below so it doesn't
+     crowd the hamburger toggle out of the viewport */
+  .nav-right > .btn-primary { display: none; }
+}
+
+/* Hero grid: below 1024px the two columns no longer have room to sit
+   side by side at the poster's real width — stack it under the text block
+   instead, full width up to its own 412px cap so it doesn't stretch into
+   an oversized card on a wide tablet. */
+@media (max-width: 1024px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    padding-inline: clamp(1.25rem, 6vw, 80px);
+    align-items: stretch;
+    row-gap: var(--space-xl);
+    padding-block: calc(var(--nav-height) + var(--space-lg)) var(--space-2xl);
+  }
+  .hero-content { grid-column: 1 / -1; padding-top: 0; padding-bottom: 0; }
+  .true-price-poster {
+    grid-column: 1 / -1;
+    align-self: auto;
+    justify-self: center;
+    width: 100%;
+    max-width: 412px;
+  }
+
+  /* Tablet tier of the mobile nav panel — its own values, not a scaled
+     copy of the phone tier below: a tablet has the width to spare, so the
+     panel itself stays comfortably wide and the type stays large, just
+     slightly denser than the >1024px "large tablet/small laptop" default. */
+  .nav-panel { width: min(46vw, 400px); }
+  .nav-panel-links { gap: 0.35rem; }
+  .nav-panel-links a { font-size: 1.55rem; padding-block: 0.28em; }
+}
+
+@media (max-width: 991px) {
+  /* ── Global ── */
+  /* Section-heading support paragraph is body text (19px) at desktop —
+     on tablet it stays readable but doesn't dominate the h2. */
+  .section-heading p { font-size: 1rem; }
+
+  /* Quick-facts card padding can breathe less on tablet. */
+  .quick-facts { padding: var(--space-lg); }
+
+  /* About: media image height is unconstrained by default — cap it so the
+     stacked photo doesn't take up 70%+ of viewport height on tablet. */
+  .about-media { max-height: 420px; }
+
+  /* Config cards: 3-col Bootstrap row collapses to 1-col below 768px via
+     col-md-4, but on 768–991px they're 2 columns — let them breathe. */
+  .config-card-body { padding: var(--space-md); }
+
+  /* Advantage rows: shrink the time value on tablet so it doesn't crowd. */
+  .advantage-row .stop-time { font-size: 1.35rem; }
+
+  .trust-item:nth-child(3) { border-left: none; padding-left: 0; }
+
+  .amenities-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 180px; gap: var(--space-xs); }
+  .amenity-tile.span-2-2, .amenity-tile.span-2-1, .amenity-tile.span-3-1, .amenity-tile.span-4-1, .amenity-tile.span-4-2 {
+    grid-column: span 2; grid-row: span 1;
+  }
+  .amenity-tile .tile-label { font-size: 0.95rem; left: var(--space-xs); bottom: var(--space-xs); }
+
+  .why-karjat-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-md); }
+  .why-karjat-stat { font-size: 1.9rem; }
+
+  .testimonial-showcase { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 220px; }
+  .testimonial-featured { grid-column: span 2; grid-row: span 2; }
+
+  /* Sticky-panel-plus-scroll only reads as intended with real side-by-side
+     width; below tablet it collapses to a plain stack, photo on top. */
+  .advantage-layout { grid-template-columns: 1fr; gap: var(--space-lg); }
+  .advantage-media { position: relative; top: auto; aspect-ratio: 16 / 10; }
+  .advantage-row { opacity: 1; transform: none; }
+  .advantage-row { grid-template-columns: 52px 1fr auto; gap: var(--space-sm); }
+  .advantage-row .stop-icon { width: 48px; height: 48px; }
+  .advantage-row .stop-icon svg { width: 26px; height: 26px; }
+
+  /* ------------------------------------------------------------------
+     CONSTRUCTION — below the desktop pin breakpoint (js/main.js gates the
+     same 992px threshold) GSAP's ScrollTrigger pin/scrub never
+     initializes, so .construction-viewport becomes a native horizontal
+     scroll-snap carousel instead: a real swipe gesture (not the vertical
+     photo dump this used to fall back to), with the progress bar now
+     shown again as a live, directly-draggable scrubber — see the JS
+     "construction timeline" touch-carousel path.
+     ------------------------------------------------------------------ */
+  .construction-viewport {
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-inline: calc(var(--container-pad-x) * -1);
+    padding-inline: var(--container-pad-x);
+  }
+  .construction-viewport::-webkit-scrollbar { display: none; }
+  .construction-track { gap: var(--space-md); }
+  .construction-month {
+    flex: 0 0 82%;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+  .construction-month .month-label .name { font-size: 1.6rem; }
+
+  .construction-swipe-hint { display: flex; }
+
+  .construction-progress-row { display: flex; }
+  .construction-progress-bar {
+    position: relative;
+    touch-action: none;
+    cursor: grab;
+  }
+  /* Invisible, generously oversized hit area — the bar itself stays a
+     thin 4px hairline visually, but the actual touch target is a proper
+     finger-sized strip around it. */
+  .construction-progress-bar::before {
+    content: '';
+    position: absolute;
+    inset: -18px 0;
+  }
+  .construction-progress-fill::after {
+    width: 22px;
+    height: 22px;
+    border-width: 3px;
+  }
+
+  .quick-facts-wrap { margin-top: calc(var(--space-lg) * -1); }
+  .quick-facts { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  :root { --nav-height: 72px; }
+
+  /* ── Global section rhythm ── */
+  /* 80px top/bottom section padding on a phone is dead space. Real sites
+     use 48–56px at this tier. --space-xl is 48px in this token scale. */
+  .section { padding-block: var(--space-xl); }
+
+  /* Section headings: tighten the heading+content gap and drop the support
+     paragraph to 1rem — 19px body on a 360px phone is very heavy. */
+  .section-heading {
+    margin-bottom: var(--space-lg);
+  }
+  .section-heading p {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  /* ── Hero ── */
+  /* sub-headline stays readable but compact at phone widths */
+  .hero-sub { font-size: 1rem; }
+
+  /* ── Quick facts ── */
+  /* 2-col at 991px is already handled; on phones keep 2-col but shrink
+     the value so nothing overflows a 160px column. */
+  .quick-facts { padding: var(--space-md); gap: var(--space-md); }
+  .quick-fact .value { font-size: 1rem; }
+  .quick-fact-icon { width: 34px; height: 34px; }
+
+  /* ── About section ── */
+  /* Photo capped lower on phone so it doesn't scroll for ages. */
+  .about-media { max-height: 300px; }
+  .about-lede { font-size: 1.1rem; }
+  /* The about-row → trust-grid gap stacks a full --space-2xl (96px) margin
+     with another --space-2xl padding-top — ~192px of dead space that read
+     fine on desktop's generous whitespace but ate a quarter of a phone
+     screen. Halve both tiers here. */
+  .about-layout { margin-bottom: var(--space-lg); }
+  #about .trust-grid { padding-top: var(--space-lg); }
+  /* Trust strip is 2-col (col-6 col-md-3): item 3 starts row 2 so it
+     shouldn't carry a stray left divider — leave the 991px fix alone here
+     (a previous override on nth-child(3)/nth-child(2) at this breakpoint
+     had it backwards, adding the divider back to item 3 instead of item 2). */
+  .trust-number { font-size: clamp(1.8rem, 5vw, 2.4rem); }
+
+  /* ── Karjat Advantage ── */
+  /* Advantage rows get a tighter 3-col track on phone: icon, copy, time */
+  .advantage-row { grid-template-columns: 44px 1fr auto; gap: var(--space-xs); padding-block: var(--space-sm); }
+  .advantage-row .stop-icon { width: 40px; height: 40px; }
+  .advantage-row .stop-icon svg { width: 22px; height: 22px; }
+  .advantage-row .stop-copy h3 { font-size: 1.05rem; }
+  .advantage-row .stop-time { font-size: 1.1rem; }
+  .advantage-supporting p { font-size: 1rem; }
+
+  /* ── Configurations ── */
+  .config-card-body { padding: var(--space-md); }
+  .config-card-body h3 { font-size: 1.3rem; }
+  .config-price { font-size: 1.2rem; }
+
+  /* ── CTA / Contact section ── */
+  /* 4:3 is very tall on a narrow phone (a 360px-wide image → 270px tall);
+     16:9 gives the same cinematic feel at a friendlier 202px. */
+  .cta-media { aspect-ratio: 16 / 9; margin-top: var(--space-lg); }
+  .cta-copy h2 { font-size: clamp(1.6rem, 5vw, 2.2rem); }
+  .cta-direct { gap: var(--space-md); }
+
+  /* Visit form: inputs were still running the fixed 19px desktop
+     --fs-body plus 0.9em/1em padding, with a full --space-md between
+     four stacked fields — comfortable at desktop width but oversized
+     next to everything else tightened at this breakpoint. */
+  .visit-form { gap: var(--space-sm); }
+  .form-row { gap: 0.35rem; }
+  .form-row input,
+  .form-row select { padding: 0.7em 0.85em; font-size: 1rem; }
+
+  /* ── Why Karjat ── */
+  .why-karjat-card { padding: var(--space-md); }
+  .why-karjat-stat { font-size: 1.8rem; }
+  .why-karjat-grid { margin-top: var(--space-lg); }
+  /* The decorative glow is sized as a % of the section's own box, which is
+     fine at desktop's one-row-of-four height but balloons into a huge,
+     almost-opaque rectangle once the cards stack to a single column on
+     phone (85% of a very tall section vastly outgrows "transparent 70%"'s
+     fade radius) — reads as a hard color block behind the heading instead
+     of an ambient glow. Pin it to a fixed size anchored near the top
+     instead of scaling with content height. */
+  #why-karjat::before {
+    top: -60px;
+    right: -20%;
+    width: 90%;
+    height: 380px;
+  }
+
+  .testimonial-showcase { grid-template-columns: 1fr; grid-auto-rows: 320px; }
+  .testimonial-featured { grid-column: span 1; grid-row: span 1; aspect-ratio: 4 / 3; }
+  .testimonials-mark { font-size: 60vw; }
+
+  .amenities-grid { grid-template-columns: 1fr 1fr; grid-auto-rows: 160px; }
+  .amenity-tile .tile-label { font-size: 0.85rem; }
+
+  .why-karjat-grid { grid-template-columns: 1fr; }
+  .why-karjat-card { padding: var(--space-md); }
+
+  .hero-title { max-width: 100%; margin-bottom: var(--space-sm); }
+  .hero-content { padding-bottom: var(--space-lg); }
+
+  .quick-facts-wrap { margin-top: var(--space-md); }
+  .quick-facts { grid-template-columns: repeat(2, 1fr); gap: var(--space-md); padding: var(--space-lg); }
+  .quick-fact-icon { width: 32px; height: 32px; }
+  .quick-fact .value { font-size: 1rem; }
+
+  .construction-month { flex-basis: 90%; }
+  .construction-month .month-photos { grid-template-columns: 1fr 1fr; }
+  .construction-month .month-photos .month-photo:last-child { display: none; }
+
+  /* Phone tier of the mobile nav panel — noticeably tighter than the
+     tablet tier above: a narrower panel, smaller type, and a denser
+     row rhythm so all six links plus the phone number and CTA sit
+     comfortably without feeling like a shrunk desktop menu. */
+  .nav-panel { width: min(84vw, 360px); padding: var(--space-lg); }
+  .nav-panel-links { gap: 0.1rem; margin-bottom: var(--space-lg); }
+  .nav-panel-links a { font-size: 1.3rem; padding-block: 0.32em; }
+  .nav-panel-phone { font-size: 0.9rem; }
+
+  .footer-rera { flex-direction: column; align-items: flex-start; }
+
+  /* Footer: stacked columns on phones need less row gap and slightly
+     reduced type so the whole footer doesn't become a scrolling wall. */
+  .footer-grid { row-gap: var(--space-lg); }
+  .footer-col p,
+  .footer-col a { font-size: 14px; }
+  .footer-col h3 { margin-bottom: 0.5rem; }
+  /* Thin hairline between Contact and Explore when they stack vertically */
+  .footer-col + .footer-col {
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-hairline-dark);
+  }
+  .footer-social a { width: 40px; height: 40px; }
+  .footer-bottom { font-size: 0.75rem; gap: var(--space-xs); }
+}
+/* ==========================================================================
+   18b. TINY-PHONE TIER — ≤ 480 px
+   Only the most extreme overrides live here. At 360–480px some type and
+   spacing values still need a final nudge that would be too aggressive at
+   the 640px tablet-phone boundary above.
+   ========================================================================== */
+@media (max-width: 480px) {
+  /* Hero: tighten the truepriceposter so it fits without scrolling. */
+  .true-price-poster { padding: 18px; gap: 14px; }
+  .tpp-title { font-size: 30px; }
+  .tpp-price-value { font-size: 26px; }
+
+  /* Quick facts: value at 1rem may still crowd at 360px — go 0.92rem. */
+  .quick-fact .value { font-size: 0.92rem; }
+  .quick-fact .label { font-size: 0.68rem; }
+  .quick-facts { gap: var(--space-sm); }
+
+  /* About lede at extreme narrow phones */
+  .about-lede { font-size: 1rem; }
+
+  /* Config card specs row — reduce gap so it doesn't wrap awkwardly. */
+  .config-specs { gap: var(--space-sm); }
+
+  /* Why Karjat icon at phone tier */
+  .why-karjat-icon { width: 44px; height: 44px; }
+
+  /* Section heading h2 line-height on tiny phones */
+  .section-heading h2 { line-height: 1.15; }
+
+  /* Footer bottom: 2 lines at 360px, tighter gap */
+  .footer-bottom { flex-direction: column; gap: 4px; text-align: center; }
+}
