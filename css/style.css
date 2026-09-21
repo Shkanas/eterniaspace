@@ -2903,23 +2903,27 @@ a.cta-direct-item:hover { color: var(--color-cream); }
      had it backwards, adding the divider back to item 3 instead of item 2). */
   .trust-number { font-size: clamp(1.8rem, 5vw, 2.4rem); }
 
-  /* Mobile counter spacing — items on right column were flush against the
-     screen edge with no breathing room. Add horizontal padding to the
-     grid container so all counters stay inset from both sides. */
+  /* Mobile counter spacing — Bootstrap .row uses negative horizontal margins
+     that cancel any padding-inline we add to the .row itself.
+     Fix: overflow:hidden on the wrapper clips the negative-margin bleed,
+     then we add explicit padding-right to even items (the right column)
+     and padding-left to odd items (the left column) so every counter has
+     comfortable breathing room from both screen edges. */
   #about .trust-grid.row {
-    padding-inline: var(--space-sm);
+    overflow: hidden;
+    margin-inline: 0;
   }
-  .trust-item {
-    padding-inline: var(--space-sm);
-  }
-  .trust-item:first-child {
-    padding-left: var(--space-sm);
-  }
+  /* Left column (1st, 3rd item) — no left border, good left spacing */
   .trust-item:nth-child(odd) {
     border-left: none;
+    padding-left: var(--space-sm);
+    padding-right: var(--space-xs);
   }
+  /* Right column (2nd, 4th item) — keep divider, add right breathing room */
   .trust-item:nth-child(even) {
     border-left: 1px solid var(--color-hairline-light);
+    padding-left: var(--space-sm);
+    padding-right: var(--space-md);
   }
 
   /* ── Karjat Advantage ── */
